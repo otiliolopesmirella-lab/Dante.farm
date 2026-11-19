@@ -14,8 +14,7 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '21'
-      - uses: android-actions/setup-android@v3
-      - run: yes | sdkmanager --licenses > /dev/null 2>&1 || true
+      - run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
@@ -26,6 +25,10 @@ jobs:
             keytool -genkeypair -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
       - run: gradle :app:assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Dante-Farm-DigiIdle-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
       - env:
           GH_TOKEN: ${{ github.token }}
         run: |
