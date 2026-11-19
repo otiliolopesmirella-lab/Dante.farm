@@ -9,7 +9,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.model.AccountSlotConfig
-import com.example.model.DIGIIDLE_PRIMARY_URL
+import com.example.model.DEFAULT_GAME_URL
 import com.example.model.GlobalFarmSettings
 import com.example.model.LayoutMode
 import com.example.model.SLOT_COUNT
@@ -30,6 +30,7 @@ class FarmPreferencesRepository(private val context: Context) {
     private object Keys {
         val LAYOUT_MODE = stringPreferencesKey("layout_mode")
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
+        val BACKGROUND_FARM_ENABLED = booleanPreferencesKey("background_farm_enabled")
         val AUTO_REFRESH_MINUTES = intPreferencesKey("auto_refresh_minutes")
         val ANTI_AFK_HEARTBEAT = booleanPreferencesKey("anti_afk_heartbeat")
         val HEADER_COLLAPSED = booleanPreferencesKey("header_collapsed")
@@ -50,6 +51,7 @@ class FarmPreferencesRepository(private val context: Context) {
         val settings = GlobalFarmSettings(
             layoutMode = layoutMode,
             keepScreenOn = prefs[Keys.KEEP_SCREEN_ON] ?: true,
+            backgroundFarmEnabled = prefs[Keys.BACKGROUND_FARM_ENABLED] ?: true,
             autoRefreshMinutes = prefs[Keys.AUTO_REFRESH_MINUTES] ?: 0,
             antiAfkHeartbeat = prefs[Keys.ANTI_AFK_HEARTBEAT] ?: true,
             isHeaderCollapsed = prefs[Keys.HEADER_COLLAPSED] ?: false,
@@ -59,7 +61,7 @@ class FarmPreferencesRepository(private val context: Context) {
             AccountSlotConfig(
                 index = idx,
                 label = prefs[Keys.slotLabel(idx)] ?: "Conta ${idx + 1}",
-                url = prefs[Keys.slotUrl(idx)] ?: DIGIIDLE_PRIMARY_URL,
+                url = prefs[Keys.slotUrl(idx)] ?: DEFAULT_GAME_URL,
                 zoomPercent = (prefs[Keys.slotZoom(idx)] ?: 65).coerceIn(35, 130),
                 desktopMode = prefs[Keys.slotDesktop(idx)] ?: false,
                 isMuted = prefs[Keys.slotMuted(idx)] ?: (idx > 0),
@@ -76,6 +78,10 @@ class FarmPreferencesRepository(private val context: Context) {
 
     suspend fun updateKeepScreenOn(enabled: Boolean) {
         context.farmDataStore.edit { it[Keys.KEEP_SCREEN_ON] = enabled }
+    }
+
+    suspend fun updateBackgroundFarmEnabled(enabled: Boolean) {
+        context.farmDataStore.edit { it[Keys.BACKGROUND_FARM_ENABLED] = enabled }
     }
 
     suspend fun updateAutoRefreshMinutes(minutes: Int) {
@@ -123,7 +129,7 @@ class FarmPreferencesRepository(private val context: Context) {
     companion object {
         fun normalizeUrl(raw: String): String {
             val trimmed = raw.trim()
-            if (trimmed.isEmpty()) return DIGIIDLE_PRIMARY_URL
+            if (trimmed.isEmpty()) return DEFAULT_GAME_URL
             return if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
                 trimmed
             } else {

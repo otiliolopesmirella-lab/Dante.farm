@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Dante Farm DigiIdle</string>
+    <string name="app_name">Dante Farm Idle</string>
     <string name="badge_isolated_4x">4× ISOLADO</string>
     <string name="badge_shared_session">MODO COMPARTILHADO</string>
     <string name="action_reload_all">Recarregar todas</string>
@@ -15,9 +15,14 @@
     <string name="error_load_title">Falha na conexão</string>
     <string name="action_retry">Tentar novamente</string>
     <string name="keep_screen_on_label">Manter tela ligada</string>
+    <string name="background_farm_label">Rodar em 2º plano (YouTube / Outros apps)</string>
     <string name="anti_afk_label">Pulso Anti-AFK (45s)</string>
     <string name="auto_refresh_label">Auto-Recarregar Global</string>
     <string name="apply_all_label">Ações em Massa (4 Contas)</string>
     <string name="clear_session_label">Limpar Sessão Desta Conta</string>
     <string name="clear_session_confirm">Confirmar Logout?</string>
+    <string name="fgs_channel_name">Farm em Segundo Plano</string>
+    <string name="fgs_channel_desc">Mantém as sessões de farm ativas enquanto você usa outros aplicativos.</string>
+    <string name="fgs_notification_title">Dante Farm Idle ativo em 2º plano</string>
+    <string name="fgs_action_stop">Parar 2º Plano</string>
 </resources>

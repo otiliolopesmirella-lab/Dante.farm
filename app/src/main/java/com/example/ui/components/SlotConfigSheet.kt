@@ -15,15 +15,21 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.DesktopWindows
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Key
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,6 +37,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -38,6 +45,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -52,16 +60,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.model.AccountSlotConfig
-import com.example.model.DIGIIDLE_BR_URL
-import com.example.model.DIGIIDLE_PRIMARY_URL
+import com.example.model.SlotCredentials
 import com.example.model.SlotRuntimeState
 import com.example.ui.theme.CrimsonError
 import com.example.ui.theme.CyberBorder
 import com.example.ui.theme.CyberCardSurface
 import com.example.ui.theme.CyberDeckSurface
+import com.example.ui.theme.ObsidianBg
 import com.example.ui.theme.SlotAccents
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
@@ -72,9 +83,20 @@ import kotlin.math.roundToInt
 @Composable
 fun SlotConfigSheet(
     config: AccountSlotConfig,
+    credentials: SlotCredentials,
     runtime: SlotRuntimeState,
     onDismiss: () -> Unit,
-    onSave: (label: String, url: String, zoomPercent: Int, desktopMode: Boolean) -> Unit,
+    onSave: (
+        label: String,
+        url: String,
+        zoomPercent: Int,
+        desktopMode: Boolean,
+        username: String,
+        password: String,
+        autoFillLogin: Boolean,
+    ) -> Unit,
+    onAutofillNow: (username: String, password: String, autoFillLogin: Boolean) -> Unit,
+    onClearCredentials: () -> Unit,
     onReload: () -> Unit,
     onGoBack: () -> Unit,
     onGoHome: () -> Unit,
@@ -88,6 +110,10 @@ fun SlotConfigSheet(
     var url by remember(config.index) { mutableStateOf(config.url) }
     var zoomPercent by remember(config.index) { mutableIntStateOf(config.zoomPercent) }
     var desktopMode by remember(config.index) { mutableStateOf(config.desktopMode) }
+    var username by remember(config.index, credentials.username) { mutableStateOf(credentials.username) }
+    var password by remember(config.index, credentials.password) { mutableStateOf(credentials.password) }
+    var autoFillLogin by remember(config.index, credentials.autoFillLogin) { mutableStateOf(credentials.autoFillLogin) }
+    var showPassword by remember { mutableStateOf(false) }
     var confirmClearSession by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
@@ -118,7 +144,7 @@ fun SlotConfigSheet(
                     )
                     Text(
                         text = if (runtime.isIsolatedProfileActive) {
-                            "Perfil WebView isolado: digiidle_slot_${config.index + 1}"
+                            "Sessão isolada independente • Perfil ${config.index + 1}"
                         } else {
                             "Perfil compartilhado (atualize o WebView do sistema)"
                         },
@@ -200,11 +226,183 @@ fun SlotConfigSheet(
                 ),
             )
 
+            // Saved Account Credentials Card (Username & Password)
+            Surface(
+                color = CyberCardSurface.copy(alpha = 0.7f),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, accent.primary.copy(alpha = 0.35f)),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Key,
+                            contentDescription = null,
+                            tint = accent.primary,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Login Salvo (Usuário e Senha)",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = TextPrimary,
+                            )
+                            Text(
+                                text = "Salvo com criptografia neste aparelho só para esta tela",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary,
+                            )
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = username,
+                        onValueChange = { username = it },
+                        label = { Text("Usuário ou E-mail") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Rounded.Person,
+                                contentDescription = null,
+                                tint = accent.primary,
+                            )
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("slot_username_input"),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = accent.primary,
+                            unfocusedBorderColor = CyberBorder,
+                            focusedLabelColor = accent.primary,
+                            cursorColor = accent.primary,
+                        ),
+                    )
+
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text("Senha da conta") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Rounded.Lock,
+                                contentDescription = null,
+                                tint = accent.primary,
+                            )
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = { showPassword = !showPassword }) {
+                                Icon(
+                                    imageVector = if (showPassword) {
+                                        Icons.Rounded.VisibilityOff
+                                    } else {
+                                        Icons.Rounded.Visibility
+                                    },
+                                    contentDescription = if (showPassword) "Ocultar senha" else "Mostrar senha",
+                                    tint = TextSecondary,
+                                )
+                            }
+                        },
+                        visualTransformation = if (showPassword) {
+                            VisualTransformation.None
+                        } else {
+                            PasswordVisualTransformation()
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("slot_password_input"),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = accent.primary,
+                            unfocusedBorderColor = CyberBorder,
+                            focusedLabelColor = accent.primary,
+                            cursorColor = accent.primary,
+                        ),
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text = "Auto-logar ao abrir tela de login",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextPrimary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Switch(
+                            checked = autoFillLogin,
+                            onCheckedChange = { autoFillLogin = it },
+                            modifier = Modifier.testTag("slot_autofill_switch"),
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = CyberDeckSurface,
+                                checkedTrackColor = accent.primary,
+                            ),
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Button(
+                            onClick = {
+                                onAutofillNow(username, password, autoFillLogin)
+                                onDismiss()
+                            },
+                            enabled = username.isNotBlank() && password.isNotBlank(),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("slot_autofill_now_button"),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = accent.container,
+                                contentColor = accent.primary,
+                            ),
+                            border = BorderStroke(1.dp, accent.primary),
+                        ) {
+                            Text("Entrar Agora", style = MaterialTheme.typography.labelMedium)
+                        }
+
+                        if (credentials.hasCredentials) {
+                            OutlinedButton(
+                                onClick = {
+                                    username = ""
+                                    password = ""
+                                    onClearCredentials()
+                                },
+                                modifier = Modifier.testTag("slot_clear_credentials_button"),
+                                border = BorderStroke(1.dp, CrimsonError.copy(alpha = 0.6f)),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = CrimsonError),
+                            ) {
+                                Text("Apagar", style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                    }
+                }
+            }
+
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 OutlinedTextField(
                     value = url,
                     onValueChange = { url = it },
                     label = { Text("URL do jogo") },
+                    placeholder = { Text("Ex: https://seujogo.com") },
+                    supportingText = {
+                        Text(
+                            text = "Cole o link de qualquer jogo web para farmar nesta tela.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary,
+                        )
+                    },
                     singleLine = true,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -216,26 +414,6 @@ fun SlotConfigSheet(
                         cursorColor = accent.primary,
                     ),
                 )
-
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    listOf(
-                        "digiidle.com" to DIGIIDLE_PRIMARY_URL,
-                        "digiidle.com.br" to DIGIIDLE_BR_URL,
-                    ).forEach { (shortLabel, presetUrl) ->
-                        FilterChip(
-                            selected = url.trimEnd('/') == presetUrl,
-                            onClick = { url = presetUrl },
-                            label = { Text(shortLabel, style = MaterialTheme.typography.labelMedium) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = accent.container,
-                                selectedLabelColor = accent.primary,
-                            ),
-                        )
-                    }
-                }
             }
 
             // Zoom slider + quick presets
@@ -396,7 +574,17 @@ fun SlotConfigSheet(
             Spacer(Modifier.height(4.dp))
 
             Button(
-                onClick = { onSave(label, url, zoomPercent, desktopMode) },
+                onClick = {
+                    onSave(
+                        label,
+                        url,
+                        zoomPercent,
+                        desktopMode,
+                        username,
+                        password,
+                        autoFillLogin,
+                    )
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp)
@@ -408,7 +596,7 @@ fun SlotConfigSheet(
                 ),
             ) {
                 Text(
-                    text = "Aplicar no Slot ${config.index + 1}",
+                    text = "Salvar e Aplicar no Slot ${config.index + 1}",
                     style = MaterialTheme.typography.titleMedium,
                 )
             }

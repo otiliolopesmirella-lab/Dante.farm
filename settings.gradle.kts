@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Dante Farm DigiIdle"
+rootProject.name = "Dante Farm Idle"
 
 include(":app")

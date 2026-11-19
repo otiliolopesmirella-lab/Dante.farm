@@ -1,5 +1,9 @@
 package com.example.ui.components
 
+import android.content.Intent
+import android.net.Uri
+import android.os.PowerManager
+import android.provider.Settings
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
@@ -19,11 +23,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.BatterySaver
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.Layers
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.icons.rounded.WbSunny
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -32,28 +42,42 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.R
-import com.example.model.DIGIIDLE_BR_URL
-import com.example.model.DIGIIDLE_PRIMARY_URL
 import com.example.model.GlobalFarmSettings
+import com.example.monetization.SubscriptionStatus
 import com.example.ui.theme.AmberGold
+import com.example.ui.theme.CrimsonGlow
+import com.example.ui.theme.CrimsonNeon
 import com.example.ui.theme.CyberBorder
 import com.example.ui.theme.CyberCardSurface
 import com.example.ui.theme.CyberDeckSurface
+import com.example.ui.theme.DeepAmberContainer
+import com.example.ui.theme.DeepCrimsonContainer
 import com.example.ui.theme.DeepCyanContainer
 import com.example.ui.theme.DeepEmeraldContainer
 import com.example.ui.theme.ElectricCyan
@@ -65,14 +89,31 @@ import com.example.ui.theme.TextSecondary
 @Composable
 fun GlobalSettingsSheet(
     settings: GlobalFarmSettings,
+    subscription: SubscriptionStatus,
     onDismiss: () -> Unit,
+    onOpenPaywall: () -> Unit,
     onToggleKeepScreenOn: (Boolean) -> Unit,
+    onToggleBackgroundFarm: (Boolean) -> Unit,
     onToggleAntiAfk: (Boolean) -> Unit,
     onSelectAutoRefreshMinutes: (Int) -> Unit,
     onApplyUrlToAll: (String) -> Unit,
     onApplyZoomToAll: (Int) -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var isIgnoringBatteryOpt by remember { mutableStateOf(checkBatteryOptimizationIgnored(context)) }
+    var bulkUrlInput by remember { mutableStateOf("") }
+
+    DisposableEffect(lifecycleOwner, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                isIgnoringBatteryOpt = checkBatteryOptimizationIgnored(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -89,18 +130,25 @@ fun GlobalSettingsSheet(
                 .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            DanteHeroBannerCard(
+                drawableRes = R.drawable.dante_settings_banner,
+                aspectRatio = 16f / 9f,
+                showBottomVignette = false,
+                modifier = Modifier.testTag("settings_banner"),
+            )
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.dante_farm_logo),
+                    painter = painterResource(id = R.drawable.dante_avatar),
                     contentDescription = stringResource(R.string.app_name),
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .border(1.5.dp, com.example.ui.theme.CrimsonError, CircleShape),
+                        .border(1.8.dp, CrimsonNeon, CircleShape),
                 )
                 Column {
                     Text(
@@ -109,10 +157,91 @@ fun GlobalSettingsSheet(
                         color = TextPrimary,
                     )
                     Text(
-                        text = "Central de Farm 4×",
+                        text = "OPÇÕES E CONFIGURAÇÃO 4×",
                         style = MaterialTheme.typography.labelMedium,
-                        color = ElectricCyan,
+                        color = CrimsonGlow,
                     )
+                }
+            }
+
+            // Subscription Status Card
+            Surface(
+                onClick = {
+                    onDismiss()
+                    onOpenPaywall()
+                },
+                color = if (subscription.isProActive) {
+                    DeepEmeraldContainer.copy(alpha = 0.6f)
+                } else {
+                    DeepCrimsonContainer.copy(alpha = 0.7f)
+                },
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(
+                    1.2.dp,
+                    if (subscription.isProActive) EmeraldNeon else CrimsonNeon,
+                ),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Star,
+                            contentDescription = null,
+                            tint = if (subscription.isProActive) EmeraldNeon else AmberGold,
+                            modifier = Modifier.size(22.dp),
+                        )
+                        Column {
+                            Text(
+                                text = when {
+                                    subscription.isPaidPro -> "Plano PRO Ativo"
+                                    subscription.isTrialActive -> "Teste Grátis Ativo (30 min/dia)"
+                                    else -> "Plano Gratuito (1/4 contas)"
+                                },
+                                style = MaterialTheme.typography.titleSmall,
+                                color = TextPrimary,
+                            )
+                            Text(
+                                text = when {
+                                    subscription.isPaidPro || subscription.isTrialActive -> {
+                                        val rem = subscription.remainingTimeLabel()
+                                        if (rem != null) "$rem • Toque para gerenciar" else "Acesso 4× ativo • Toque para gerenciar"
+                                    }
+                                    subscription.canStartDailyTrial -> {
+                                        "Teste grátis 30 min/dia ou assine PRO (PIX)"
+                                    }
+                                    else -> {
+                                        "Diário R$ 2 • Semanal R$ 15 • Mensal R$ 30 (PIX)"
+                                    }
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary,
+                            )
+                        }
+                    }
+                    Button(
+                        onClick = {
+                            onDismiss()
+                            onOpenPaywall()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (subscription.isProActive) EmeraldNeon else CrimsonNeon,
+                            contentColor = if (subscription.isProActive) CyberDeckSurface else TextPrimary,
+                        ),
+                    ) {
+                        Text(
+                            text = if (subscription.isProActive) "Ver" else "Assinar",
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
                 }
             }
 
@@ -202,6 +331,111 @@ fun GlobalSettingsSheet(
                 )
             }
 
+            // Background Farm (Foreground Service)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Layers,
+                        contentDescription = null,
+                        tint = EmeraldNeon,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = stringResource(R.string.background_farm_label),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = TextPrimary,
+                        )
+                        Text(
+                            text = "Mantém o farm ativo enquanto você assiste YouTube ou usa outros apps",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary,
+                        )
+                    }
+                }
+                Switch(
+                    checked = settings.backgroundFarmEnabled,
+                    onCheckedChange = onToggleBackgroundFarm,
+                    modifier = Modifier.testTag("switch_background_farm"),
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = CyberDeckSurface,
+                        checkedTrackColor = EmeraldNeon,
+                    ),
+                )
+            }
+
+            // Battery Optimization Helper Card
+            Surface(
+                color = if (isIgnoringBatteryOpt) DeepEmeraldContainer.copy(alpha = 0.4f) else DeepAmberContainer.copy(alpha = 0.45f),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(
+                    1.dp,
+                    if (isIgnoringBatteryOpt) EmeraldNeon.copy(alpha = 0.5f) else AmberGold.copy(alpha = 0.65f),
+                ),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.BatterySaver,
+                            contentDescription = null,
+                            tint = if (isIgnoringBatteryOpt) EmeraldNeon else AmberGold,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (isIgnoringBatteryOpt) {
+                                    "Bateria: Sem restrições (Protegido)"
+                                } else {
+                                    "Bateria com economia ativada"
+                                },
+                                style = MaterialTheme.typography.titleSmall,
+                                color = TextPrimary,
+                            )
+                            Text(
+                                text = if (isIgnoringBatteryOpt) {
+                                    "O Android não vai encerrar suas contas ao abrir o YouTube."
+                                } else {
+                                    "Para o Android (Xiaomi, Samsung, Realme, Motorola) não fechar o farm em 2º plano, marque Bateria como 'Sem restrições'."
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary,
+                            )
+                        }
+                    }
+                    if (!isIgnoringBatteryOpt) {
+                        OutlinedButton(
+                            onClick = { openBatterySettings(context) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("open_battery_settings_button"),
+                            border = BorderStroke(1.dp, AmberGold),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = AmberGold),
+                        ) {
+                            Text(
+                                text = "Liberar Bateria (Sem Restrições)",
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                        }
+                    }
+                }
+            }
+
             // Anti-AFK Pulse
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -221,7 +455,7 @@ fun GlobalSettingsSheet(
                     Spacer(Modifier.width(10.dp))
                     Column {
                         Text(
-                            text = stringResource(R.string.anti_afk_label),
+                            text = stringResource(R.string.anti_afk_label) + if (!subscription.isProActive) " • PRO" else "",
                             style = MaterialTheme.typography.titleSmall,
                             color = TextPrimary,
                         )
@@ -256,7 +490,7 @@ fun GlobalSettingsSheet(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = stringResource(R.string.auto_refresh_label),
+                        text = stringResource(R.string.auto_refresh_label) + if (!subscription.isProActive) " • PRO" else "",
                         style = MaterialTheme.typography.titleSmall,
                         color = TextPrimary,
                     )
@@ -295,24 +529,53 @@ fun GlobalSettingsSheet(
                     style = MaterialTheme.typography.titleSmall,
                     color = TextPrimary,
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                OutlinedTextField(
+                    value = bulkUrlInput,
+                    onValueChange = { bulkUrlInput = it },
+                    label = { Text("URL do jogo para todas as 4 telas") },
+                    placeholder = { Text("Ex: https://seujogo.com") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Rounded.Language,
+                            contentDescription = null,
+                            tint = CrimsonNeon,
+                        )
+                    },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("bulk_url_input"),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = CrimsonNeon,
+                        unfocusedBorderColor = CyberBorder,
+                        focusedLabelColor = CrimsonGlow,
+                        cursorColor = CrimsonNeon,
+                    ),
+                )
+                Button(
+                    onClick = {
+                        onApplyUrlToAll(bulkUrlInput)
+                        onDismiss()
+                    },
+                    enabled = bulkUrlInput.isNotBlank(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("apply_bulk_url_button"),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = DeepCrimsonContainer,
+                        contentColor = TextPrimary,
+                    ),
+                    border = BorderStroke(1.2.dp, CrimsonNeon),
                 ) {
-                    OutlinedButton(
-                        onClick = { onApplyUrlToAll(DIGIIDLE_PRIMARY_URL) },
-                        modifier = Modifier.weight(1f),
-                        border = BorderStroke(1.dp, CyberBorder),
-                    ) {
-                        Text("Todas: digiidle.com", style = MaterialTheme.typography.labelMedium)
-                    }
-                    OutlinedButton(
-                        onClick = { onApplyUrlToAll(DIGIIDLE_BR_URL) },
-                        modifier = Modifier.weight(1f),
-                        border = BorderStroke(1.dp, CyberBorder),
-                    ) {
-                        Text("Todas: .com.br", style = MaterialTheme.typography.labelMedium)
-                    }
+                    Icon(
+                        imageVector = Icons.Rounded.Language,
+                        contentDescription = null,
+                        tint = CrimsonNeon,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text("Aplicar URL nas 4 Telas", style = MaterialTheme.typography.labelMedium)
                 }
 
                 Text(
@@ -336,5 +599,27 @@ fun GlobalSettingsSheet(
                 }
             }
         }
+    }
+}
+
+private fun checkBatteryOptimizationIgnored(context: android.content.Context): Boolean {
+    val pm = context.getSystemService(android.content.Context.POWER_SERVICE) as? PowerManager
+        ?: return false
+    return pm.isIgnoringBatteryOptimizations(context.packageName)
+}
+
+private fun openBatterySettings(context: android.content.Context) {
+    val appDetailsIntent = Intent(
+        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+        Uri.fromParts("package", context.packageName, null),
+    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+    val batteryListIntent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+    runCatching {
+        context.startActivity(appDetailsIntent)
+    }.onFailure {
+        runCatching { context.startActivity(batteryListIntent) }
     }
 }

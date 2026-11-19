@@ -6,14 +6,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 private val DigiQuadDarkColorScheme = darkColorScheme(
-    primary = ElectricCyan,
-    onPrimary = ObsidianBg,
-    primaryContainer = DeepCyanContainer,
-    onPrimaryContainer = ElectricCyan,
-    secondary = EmeraldNeon,
+    primary = CrimsonNeon,
+    onPrimary = Color.White,
+    primaryContainer = DeepCrimsonContainer,
+    onPrimaryContainer = CrimsonGlow,
+    secondary = MatrixGreen,
     onSecondary = ObsidianBg,
-    secondaryContainer = DeepEmeraldContainer,
-    onSecondaryContainer = EmeraldNeon,
+    secondaryContainer = DeepMatrixGreenContainer,
+    onSecondaryContainer = MatrixGreen,
     tertiary = AmberGold,
     onTertiary = ObsidianBg,
     tertiaryContainer = DeepAmberContainer,
@@ -29,7 +29,7 @@ private val DigiQuadDarkColorScheme = darkColorScheme(
     surfaceContainer = CyberCardSurface,
     surfaceContainerHigh = CyberElevatedSurface,
     outline = CyberBorder,
-    outlineVariant = Color(0xFF1E293B),
+    outlineVariant = Color(0xFF330D14),
     error = CrimsonError,
     onError = Color.White,
 )
