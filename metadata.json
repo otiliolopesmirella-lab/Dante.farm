@@ -1,0 +1,6 @@
+{
+  "name": "Dante Farm DigiIdle",
+  "description": "Multi-screen simultaneous browser deck for farming 4 DigiIdle accounts in isolated WebView sessions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

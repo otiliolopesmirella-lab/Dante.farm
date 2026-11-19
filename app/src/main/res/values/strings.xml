@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">Dante Farm DigiIdle</string>
+    <string name="badge_isolated_4x">4× ISOLADO</string>
+    <string name="badge_shared_session">MODO COMPARTILHADO</string>
+    <string name="action_reload_all">Recarregar todas</string>
+    <string name="action_settings">Configurações globais</string>
+    <string name="action_collapse_bar">Recolher barra</string>
+    <string name="action_expand_bar">Mostrar barra de controle</string>
+    <string name="action_exit_focus">Voltar ao 4× (Grade)</string>
+    <string name="action_fullscreen">Expandir conta</string>
+    <string name="action_mute_toggle">Alternar áudio</string>
+    <string name="action_slot_settings">Configurar conta</string>
+    <string name="status_paused">PAUSADA</string>
+    <string name="action_resume_slot">Retomar Farm</string>
+    <string name="error_load_title">Falha na conexão</string>
+    <string name="action_retry">Tentar novamente</string>
+    <string name="keep_screen_on_label">Manter tela ligada</string>
+    <string name="anti_afk_label">Pulso Anti-AFK (45s)</string>
+    <string name="auto_refresh_label">Auto-Recarregar Global</string>
+    <string name="apply_all_label">Ações em Massa (4 Contas)</string>
+    <string name="clear_session_label">Limpar Sessão Desta Conta</string>
+    <string name="clear_session_confirm">Confirmar Logout?</string>
+</resources>
